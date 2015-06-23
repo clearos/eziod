@@ -1,0 +1,72 @@
+Name: eziod
+Version: 1.1
+Summary: EZIO-300 LCD panel server
+Release: 5%{dist}
+Vendor: ClearFoundation
+License: GPLv2
+Group: System Environment/Daemons
+Packager: ClearFoundation
+Source: %{name}-%{version}.tar.gz
+URL: http://www.clearfoundation.com/
+BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+Requires: lm_sensors kmod-network-bypass kernel >= 2.6.18-164.11.1.v5
+Requires(post): /sbin/chkconfig
+Requires(preun): /sbin/chkconfig
+BuildRequires: lm_sensors-libs
+BuildRequires: lm_sensors-devel
+BuildRequires: lua-devel
+%description
+EZIOd is a daemon which controls the EZIO-300 LCD panel and buttons.
+
+# Prepare, configure
+%prep
+%setup -q
+%{configure}
+
+# Build
+%build
+make %{?_smp_mflags}
+
+# Install
+%install
+make install DESTDIR=$RPM_BUILD_ROOT
+mkdir -p -m 755 $RPM_BUILD_ROOT/%{_sysconfdir}/init.d
+mkdir -p -m 755 $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/modules
+mkdir -p -m 755 $RPM_BUILD_ROOT/%{_datadir}/%{name}
+cp -v eziod.conf ${RPM_BUILD_ROOT}/%{_sysconfdir}
+cp -v eziod.init ${RPM_BUILD_ROOT}/%{_sysconfdir}/init.d/eziod
+cp -v eziod.modules $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/modules/
+cp -v scripts/*.php $RPM_BUILD_ROOT/%{_datadir}/%{name}
+
+# Post install
+%post
+/sbin/chkconfig --add eziod 2>&1 || :
+/sbin/modprobe network-bypass board=CAR3000 >/dev/null 2>&1 || :
+/sbin/modprobe w83627ehf >/dev/null 2>&1 || :
+
+# Pre un-install
+%preun
+if [ "$1" = 0 ]; then
+    /sbin/chkconfig --del eziod
+fi
+
+# Post un-install
+%postun
+if [ -f /var/lock/subsys/eziod ]; then
+    killall -TERM eziod 2>&1 || :
+    sleep 2
+fi
+
+# Clean-up
+%clean
+[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
+
+# Files
+%files
+%defattr(-,root,root)
+%attr(0755,root,root)%{_sbindir}/eziod
+%config(noreplace)%{_sysconfdir}/eziod.conf
+%attr(0755,root,root)%{_sysconfdir}/init.d/eziod
+%attr(0755,root,root)%{_sysconfdir}/sysconfig/modules/eziod.modules
+%attr(0644,root,root)%{_datadir}/%{name}/*.php
+
