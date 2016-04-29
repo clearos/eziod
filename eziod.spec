@@ -1,5 +1,5 @@
 Name: eziod
-Version: 1.1
+Version: 1.2
 Summary: EZIO-300 LCD panel server
 Release: 5%{dist}
 Vendor: ClearFoundation
